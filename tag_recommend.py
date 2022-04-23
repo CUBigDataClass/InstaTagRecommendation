@@ -160,5 +160,3 @@ def show_results(test_image):
             
             
 show_results('/architecture')
-
-
