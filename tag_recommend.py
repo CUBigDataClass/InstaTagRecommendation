@@ -1,9 +1,8 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-#%matplotlib inline
+%matplotlib inline
 import matplotlib.image as mpimg
-from PIL import Image
 import io
 import tensorflow as tf
 from tensorflow.keras.applications import MobileNetV2
@@ -11,28 +10,26 @@ from pyspark.sql import SparkSession
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.recommendation import ALS, ALSModel
 from sklearn.model_selection import train_test_split
-from functools import reduce
 from functions import prepare_image, extract_features
 import os
-from tqdm import tqdm
 np.random.seed(0)
 
+from flask import Flask, jsonify, render_template, request
+
+app = Flask(__name__)
 
 
-import pandas as pd
-
-file_name = "/Users/neerab1652/Documents/Big_Data/InstaTagRecommendation/all_hashtags.pkl"
+file_name = "/all_hashtags.pkl"
 all_hashtags = pd.read_pickle(file_name)
 
 
-hashtag_metadata = pd.read_pickle("/Users/neerab1652/Documents/Big_Data/InstaTagRecommendation/hashtag_metadata.pkl")
+hashtag_metadata = pd.read_pickle("/hashtag_metadata.pkl")
 
 
-pics = pd.read_pickle("/Users/neerab1652/Documents/Big_Data/InstaTagRecommendation/tag_pic_features.pkl")
+pics = pd.read_pickle("/content/drive/MyDrive/tag_pic_features.pkl")
 
 
-hashtag_lookup = pd.read_pickle("/Users/neerab1652/Documents/Big_Data/InstaTagRecommendation/hashtag_lookup.pkl")
-
+hashtag_lookup = pd.read_pickle("/hashtag_lookup.pkl")
 
 
 ### create our neural network ###
@@ -55,67 +52,61 @@ neural_network = tf.keras.Sequential([
 spark = SparkSession.builder.master('local').getOrCreate()
 
 
-als_model = ALSModel.load("/Users/neerab1652/Documents/Big_Data/InstaTagRecommendation/ALS_MODEL/als")
+als_model = ALSModel.load("/content/drive/MyDrive/ALS_MODEL/als/")
 
 
 recs = als_model.recommendForAllUsers(numItems=10).toPandas()
-
 
 hashtag_index = list(all_hashtags)
 def lookup_hashtag(hashtag_id):
     return hashtag_index[hashtag_id]
 
 def lookup_hashtag_recs(rec_scores):
-    return [lookup_hashtag(rec) for (rec, score) in rec_scores
+    return [lookup_hashtag(rec) for (rec, score) in rec_scores]
+
+def recommender_dataframe(recs, hashtag_lookup, als_model):
+  recs['recommended_hashtags'] = recs['recommendations'].apply(lookup_hashtag_recs)
+  recs.index = recs['image_id']
+  recs = recs.join(hashtag_metadata, how='left')[['recommendations',
+                                                  'recommended_hashtags',
+                                                  'hashtags',
+                                                  'image_local_name',
+                                                  'search_hashtag']]
+              
+              
+  recs.drop('recommendations', axis=1, inplace=True)
+  image_factors = als_model.userFactors.toPandas()
+  image_factors.index = image_factors['id']
+  recs.join(image_factors);
+
+  # Add deep features information to recs dataframe
+  recs_deep = recs.join(pics, on='image_local_name', how='inner')
+
+  hashtags_df = pd.DataFrame.from_dict(hashtag_lookup, orient='index')
+  hashtags_df.head()
+  hashtags_df = hashtags_df.reset_index()
+  hashtags_df.columns = ['hashtag', 'id']
+  hashtags_df.index = hashtags_df['id']
+  hashtags_df.drop('id', axis=1, inplace=True)
 
 
-            
-recs['recommended_hashtags'] = recs['recommendations'].apply(lookup_hashtag_recs)
-recs.index = recs['image_id']
-recs = recs.join(hashtag_metadata, how='left')[['recommendations',
-                                                 'recommended_hashtags',
-                                                 'hashtags',
-                                                 'image_local_name',
-                                                 'search_hashtag']]
-            
-            
-recs.drop('recommendations', axis=1, inplace=True)
-image_factors = als_model.userFactors.toPandas()
-image_factors.index = image_factors['id']
-recs.join(image_factors);
-            
-            
-            
-# Add deep features information to recs dataframe
-recs_deep = recs.join(pics, on='image_local_name', how='inner')
-recs_deep.info()
-            
-            
-            
-ashtags_df = pd.DataFrame.from_dict(hashtag_lookup, orient='index')
-hashtags_df.head()
-hashtags_df = hashtags_df.reset_index()
-hashtags_df.columns = ['hashtag', 'id']
-hashtags_df.index = hashtags_df['id']
-hashtags_df.drop('id', axis=1, inplace=True)
+  img_features = als_model.userFactors.toPandas()
+  hashtag_features = als_model.itemFactors.toPandas()
+
+  # Only use certain columns
+  recs_deep_clean = recs_deep[['image_local_name', 'hashtags', 'deep_features']]
+
+  img_features.index = img_features['id']
+  img_features.drop(['id'], axis=1)
+
+  # Add image feature into dataframe
+  recommender_df = recs_deep_clean.join(img_features, how='inner')
+  
+  return recommender_df
 
 
-img_features = als_model.userFactors.toPandas()
-hashtag_features = als_model.itemFactors.toPandas()
-
-# Only use certain columns
-recs_deep_clean = recs_deep[['image_local_name', 'hashtags', 'deep_features']]
-
-img_features.index = img_features['id']
-img_features.drop(['id'], axis=1)
-
-# Add image feature into dataframe
-recommender_df = recs_deep_clean.join(img_features, how='inner')
-recommender_df.head()
-            
-            
-            
-            
+recommender_df = recommender_dataframe(recs,hashtag_lookup, als_model)
+                        
 # Function that finds k nearest neighbors by cosine similarity
 def find_neighbor_vectors(image_path, k=5, recommender_df=recommender_df):
     """Find image features (user vectors) for similar images."""
@@ -159,4 +150,6 @@ def show_results(test_image):
             
             
             
-show_results('/architecture')
+show_results('architecture')
+
+#app.run(host="0.0.0.0", port=5000,use_reloader=True, debug=True)
