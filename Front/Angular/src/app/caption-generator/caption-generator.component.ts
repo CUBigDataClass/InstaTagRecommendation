@@ -8,7 +8,7 @@ import { HttpClient } from '@angular/common/http';
 })
 export class CaptionGeneratorComponent implements OnInit {
 
-  caption!: File;
+  file!: File;
 
   constructor(private http: HttpClient) { }
 
@@ -17,13 +17,14 @@ export class CaptionGeneratorComponent implements OnInit {
 
 
   OnImageChange(event: any){
-    this.caption= event.target.files[0];
+    this.file= event.target.files[0];
+    console.log(this.file)
   }
   OnCaptionSubmit(){
     const uploadData =new FormData();
-    uploadData.append('caption',this.caption);
+    uploadData.append('file',this.file);
 
-    this.http.post('http://127.0.0.1:8000/files/',uploadData).subscribe(
+    this.http.post('http://127.0.0.1:5000/api/upload/captionimage',uploadData).subscribe(
       data => console.log(data),
       error => console.log(error)
     );

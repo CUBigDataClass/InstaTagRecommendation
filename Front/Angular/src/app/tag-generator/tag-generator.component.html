@@ -226,9 +226,9 @@
     
     <!-- <button type="file">Upload</button> -->
    &nbsp;&nbsp;<label class="choose"> Choose the File to upload: </label>
-      <input type="file" id="myFile"  /> 
+      <input type="file" id="myFile" (change)="OnTagChange($event)"  /> 
        <br><br><br><br>
-      <input type="submit" value="submit" id="submit"/>
+      <input type="submit" value="submit" id="submit" (click)="OnTagSubmit()"/>
   </form>
     <div></div>
     <br>
