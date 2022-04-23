@@ -100,12 +100,19 @@ class enqueueWorker(object):
         #print(" [x] Sent %r:%r" % ('toWorker', message))
 
 
-@app.route('/api/upload', methods=['GET'])
-def handle_form():
+@app.route('/api/upload/captionimage', methods=['POST'])
+def handle_captionform():
     try:
-        print(" Inside API Upload ")
-        enqueueDataToLogsExchange('Call to api /api/upload','info')
-       
+        print(" Inside Caption API Upload ")
+        enqueueDataToLogsExchange('Call to api /api/upload/captionimage','info')
+        print(request.files['file'])
+        file = request.files['file']
+ 
+        # dataToWorker = enqueueWorker()
+        # response1 = dataToWorker.enqueueDataToWorker(file)
+        # print(response1)
+        # billvalue = re.sub('[^\d\.]', '',response1)
+        # response = {'bill_value':str(billvalue)}
        
     
         # client = storage.Client()
@@ -126,9 +133,44 @@ def handle_form():
 
     except Exception as e:
         print("Something went wrong" + str(e))
-        enqueueDataToLogsExchange('Error occured in api /api/upload','info')
+        enqueueDataToLogsExchange('Error occured in api /api/upload/captionimage','info')
         return Response(response="Something went wrong!", status=500, mimetype="application/json")
 
+@app.route('/api/upload/tagimage', methods=['GET'])
+def handle_tagform():
+    try:
+        print(" Inside Tag API Upload ")
+        enqueueDataToLogsExchange('Call to api /api/upload/tagimage','info')
+        print(request.files['file'])
+        file = request.files['file']
+ 
+        # dataToWorker = enqueueWorker()
+        # response1 = dataToWorker.enqueueDataToWorker(file)
+        # print(response1)
+        # billvalue = re.sub('[^\d\.]', '',response1)
+        # response = {'bill_value':str(billvalue)}
+       
+    
+        # client = storage.Client()
+        # BUCKET_NAME = 'projectexpensegenerator'
+        # bucket = client.get_bucket(BUCKET_NAME)
+        # destination_blob_name = name2
+        # blob1 = bucket.blob(destination_blob_name)
+        # blob1.upload_from_filename(name2)
+ 
+        data = {'user_tag':'Tagabc'}
+        
+        dataToWorker = enqueueWorker()
+        response1 = dataToWorker.enqueueDataToWorker(data) #queue
+        print(response1)
+  
+        response = "worked succesfully"
+        return Response(response, status=200, mimetype="application/json")
+
+    except Exception as e:
+        print("Something went wrong" + str(e))
+        enqueueDataToLogsExchange('Error occured in api /api/upload/tagimage','info')
+        return Response(response="Something went wrong!", status=500, mimetype="application/json")
 
 @app.route('/api/auth/getpdf', methods=['GET'])
 def get_pdf():
