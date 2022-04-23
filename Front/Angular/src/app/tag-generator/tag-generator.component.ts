@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-tag-generator',
@@ -7,9 +8,25 @@ import { Component, OnInit } from '@angular/core';
 })
 export class TagGeneratorComponent implements OnInit {
 
-  constructor() { }
+  file!: File;
+
+  constructor(private http: HttpClient) { }
 
   ngOnInit(): void {
+  }
+
+  OnTagChange(event: any){
+    this.file= event.target.files[0];
+    console.log(this.file)
+  }
+  OnTagSubmit(){
+    const uploadData =new FormData();
+    uploadData.append('file',this.file);
+
+    this.http.post('http://127.0.0.1:5000/api/upload/tagimage',uploadData).subscribe(
+      data => console.log(data),
+      error => console.log(error)
+    );
   }
 
 }
