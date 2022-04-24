@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-%matplotlib inline
+from scipy.spatial.distance import cosine
+
 import matplotlib.image as mpimg
 import io
 import tensorflow as tf
@@ -19,17 +20,12 @@ from flask import Flask, jsonify, render_template, request
 app = Flask(__name__)
 
 
-file_name = "/all_hashtags.pkl"
+file_name = "./all_hashtags.pkl"
+
+pics = pd.read_pickle("./tag_pics.pkl")
 all_hashtags = pd.read_pickle(file_name)
-
-
-hashtag_metadata = pd.read_pickle("/hashtag_metadata.pkl")
-
-
-pics = pd.read_pickle("/content/drive/MyDrive/tag_pic_features.pkl")
-
-
-hashtag_lookup = pd.read_pickle("/hashtag_lookup.pkl")
+hashtag_metadata = pd.read_pickle("./hashtag_metadata.pkl")
+hashtag_lookup = pd.read_pickle("./hashtag_lookup.pkl")
 
 
 ### create our neural network ###
@@ -37,25 +33,19 @@ img_shape = (160, 160, 3)
 
 # Create the base model from the pre-trained model MobileNet V2
 base_model = MobileNetV2(input_shape=img_shape, include_top=False, weights='imagenet')
-
 global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
-
 neural_network = tf.keras.Sequential([
   base_model,
   global_average_layer,
 ])
-            
-
-
 
 ### ALS MODEL #####            
 spark = SparkSession.builder.master('local').getOrCreate()
 
-
-als_model = ALSModel.load("/content/drive/MyDrive/ALS_MODEL/als/")
-
-
+als_model = ALSModel.load("./ALS_MODEL/als/")
 recs = als_model.recommendForAllUsers(numItems=10).toPandas()
+img_features = als_model.userFactors.toPandas()
+hashtag_features = als_model.itemFactors.toPandas()
 
 hashtag_index = list(all_hashtags)
 def lookup_hashtag(hashtag_id):
@@ -72,8 +62,6 @@ def recommender_dataframe(recs, hashtag_lookup, als_model):
                                                   'hashtags',
                                                   'image_local_name',
                                                   'search_hashtag']]
-              
-              
   recs.drop('recommendations', axis=1, inplace=True)
   image_factors = als_model.userFactors.toPandas()
   image_factors.index = image_factors['id']
@@ -88,10 +76,7 @@ def recommender_dataframe(recs, hashtag_lookup, als_model):
   hashtags_df.columns = ['hashtag', 'id']
   hashtags_df.index = hashtags_df['id']
   hashtags_df.drop('id', axis=1, inplace=True)
-
-
-  img_features = als_model.userFactors.toPandas()
-  hashtag_features = als_model.itemFactors.toPandas()
+  
 
   # Only use certain columns
   recs_deep_clean = recs_deep[['image_local_name', 'hashtags', 'deep_features']]
@@ -102,10 +87,10 @@ def recommender_dataframe(recs, hashtag_lookup, als_model):
   # Add image feature into dataframe
   recommender_df = recs_deep_clean.join(img_features, how='inner')
   
-  return recommender_df
+  return recommender_df, hashtags_df
 
 
-recommender_df = recommender_dataframe(recs,hashtag_lookup, als_model)
+recommender_df, hashtags_df = recommender_dataframe(recs,hashtag_lookup, als_model)
                         
 # Function that finds k nearest neighbors by cosine similarity
 def find_neighbor_vectors(image_path, k=5, recommender_df=recommender_df):
@@ -141,15 +126,14 @@ def generate_hashtags(image_path):
 
 def show_results(test_image):
     img = mpimg.imread(f'{test_image}.jpg')
+    '''
     plt.figure(figsize=(9, 9))
     plt.title(f'Original Hashtag: {test_image.upper()}', fontsize=32)        
     plt.imshow(img)
-    
+    '''
     recommended_hashtags = generate_hashtags(f'{test_image}.jpg')
     print(', '.join(recommended_hashtags))
             
-            
-            
-show_results('architecture')
+show_results('animals')
 
 #app.run(host="0.0.0.0", port=5000,use_reloader=True, debug=True)
