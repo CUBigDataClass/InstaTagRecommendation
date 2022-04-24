@@ -228,7 +228,7 @@
    &nbsp;&nbsp;<label class="choose"> Choose the File to upload: </label>
       <input type="file" (change)="OnImageChange($event)"  /> 
        <br><br><br><br>
-      <input type="submit" value="submit" id="submit" (click)="OnCaptionSubmit()"/>
+      <input type="submit" value="submit" id="submit" (click)="OnCaptionSubmit()" routerLink="/app-caption-display"/>
   </form>
     <div></div>
     <br>

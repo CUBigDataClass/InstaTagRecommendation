@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-tag-generator',
@@ -10,7 +11,7 @@ export class TagGeneratorComponent implements OnInit {
 
   file!: File;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private router:Router) { }
 
   ngOnInit(): void {
   }
@@ -27,6 +28,7 @@ export class TagGeneratorComponent implements OnInit {
       data => console.log(data),
       error => console.log(error)
     );
+   
   }
 
 }
