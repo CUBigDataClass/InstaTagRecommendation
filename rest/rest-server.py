@@ -1,38 +1,22 @@
 ##
 from flask import Flask, request, Response, jsonify
-import platform
+import platform, hashlib
 import io, os, sys
-import pika, redis
-import hashlib
+import pika, redis, json, pickle, uuid, time, re
+
 import sys
 sys.path.append("..")
 
-import json
-import pickle
-#from PIL import Image
-# import google.auth
-# import google.oauth2.service_account as service_account
-# from google.oauth2.service_account import Credentials
-# from google.cloud import vision
-# from google.cloud import storage
-import uuid
-from flask_jwt_extended import create_access_token
-from flask_jwt_extended import get_jwt_identity
-from flask_jwt_extended import jwt_required
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, JWTManager
 from flask_cors import CORS
 from functools import reduce
 from datetime import datetime
-import time
-import pika
-import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import cosine
 
 import matplotlib.image as mpimg
-import io
 import tensorflow as tf
 from tensorflow.keras.applications import MobileNetV2
 from pyspark.sql import SparkSession
@@ -40,7 +24,8 @@ from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.recommendation import ALS, ALSModel
 from sklearn.model_selection import train_test_split
 from functions import prepare_image, extract_features
-import os
+from collections import defaultdict
+
 np.random.seed(0)
 
 # Initialize the Flask application
@@ -57,9 +42,8 @@ rabbitMQHost = os.getenv("RABBITMQ_HOST") or "localhost"
 print("Connecting to rabbitmq({})".format(rabbitMQHost))
 
 ###############################################################
-#               Neerab's Redis code start                     #
+#                     Redis code                              #
 ###############################################################
-from collections import defaultdict
 redisHost = os.getenv("REDIS_HOST") or "localhost"
 db = redis.Redis(host=redisHost, db=1)  
 print("Connecting to redis({})".format(redisHost))
@@ -105,22 +89,15 @@ def store_tag_redis(db):
     #### push the username and password and activites into redis cache
     for hashtag in hashtags:
         db.set(hashtag,pickle.dumps(tag_recommender[hashtag]))
-###############################################################
-#               Neerab's Redis code end                       #
-###############################################################
 
 ###############################################################
-#               ML Code Common Code Start                     #
+#                          ML Code                           #
 ###############################################################
-
-
 file_name = "./all_hashtags.pkl"
-
 pics = pd.read_pickle("./tag_pics.pkl")
 all_hashtags = pd.read_pickle(file_name)
 hashtag_metadata = pd.read_pickle("./hashtag_metadata.pkl")
 hashtag_lookup = pd.read_pickle("./hashtag_lookup.pkl")
-
 
 ### create our neural network ###
 img_shape = (160, 160, 3)
@@ -230,11 +207,8 @@ def show_results(test_image):
     return recommended_hashtags
 
 ###############################################################
-#               ML Code Common Code End                       #
+#                     RabbitMQ Part                           #
 ###############################################################
-
-
-
 def enqueueDataToLogsExchange(message,messageType):
     rabbitMQ = pika.BlockingConnection(
             pika.ConnectionParameters(host=rabbitMQHost))
@@ -291,35 +265,22 @@ class enqueueWorker(object):
         #return Response(response=json.dumps(self.response), status=200, mimetype="application/json")
         #print(" [x] Sent %r:%r" % ('toWorker', message))
 
-
+    
+###############################################################
+#                 REST Request Handling                       #
+###############################################################
 @app.route('/api/upload/captionimage', methods=['POST','GET'])
 def handle_captionform():
     # Adding code for rest handling - Trail
-    print("###############################################################")
-    print("#               Redis Code called                             #")
-    print("###############################################################")
-
-    store_tag_redis(db)
-    hashtag = "travel"
-    details = pickle.loads(db.get(hashtag))
-
-    import re
-    recommendation = []
-    print(details)
-    for tag in details:
-        recommendation.append(tag[0])
-    print(json.dumps(recommendation))
-    return json.dumps(recommendation)
-
     try:
         print(" Inside Caption API Upload ")
         enqueueDataToLogsExchange('Call to api /api/upload/captionimage','info')
         print(request.files['file'])
         file = request.files['file']
  
-        # dataToWorker = enqueueWorker()
-        # response1 = dataToWorker.enqueueDataToWorker(file)
-        # print(response1)
+        dataToWorker = enqueueWorker()
+        response1 = dataToWorker.enqueueDataToWorker(file)
+        print(response1)
         # billvalue = re.sub('[^\d\.]', '',response1)
         # response = {'bill_value':str(billvalue)}
        
@@ -349,23 +310,14 @@ def handle_captionform():
 def handle_tagform():
     try:
         # Adding code for rest handling - Trail
-        print("###############################################################")
-        print("#            HashTag Generator called                         #")
-        print("###############################################################")
-        img_name = request.form.get("image_path")
-        print(img_name)
-        img_name = 'fitness'
-        return show_results(img_name)
-
-        '''
         print(" Inside Tag API Upload ")
         enqueueDataToLogsExchange('Call to api /api/upload/tagimage','info')
         print(request.files['file'])
         file = request.files['file']
  
-        # dataToWorker = enqueueWorker()
-        # response1 = dataToWorker.enqueueDataToWorker(file)
-        # print(response1)
+        dataToWorker = enqueueWorker()
+        response1 = dataToWorker.enqueueDataToWorker(file)
+        print(response1)
         # billvalue = re.sub('[^\d\.]', '',response1)
         # response = {'bill_value':str(billvalue)}
        
@@ -385,33 +337,10 @@ def handle_tagform():
   
         response = "worked succesfully"
         return Response(response, status=200, mimetype="application/json")
-        '''
     except Exception as e:
         print("Something went wrong" + str(e))
         enqueueDataToLogsExchange('Error occured in api /api/upload/tagimage','info')
         return Response(response="Something went wrong!", status=500, mimetype="application/json")
-
-@app.route('/api/auth/getpdf', methods=['GET'])
-def get_pdf():
-    #data = request.get_json()
-    print("--Inside GETPdf API-")
-    enqueueDataToLogsExchange('Call to api /api/auth/getpdf','info')
-    response = "getpdf api worked succesfully"
-    
-    return Response(response, status=200, mimetype="application/json")
-
-
-@app.route('/api/auth/getexpenses', methods=['GET'])
-def get_expenses():
-    print("-Inside Get expenses API-")
-
-    enqueueDataToLogsExchange('Call to api /api/auth/getexpenses','info')
-
-    response = "getexpenses api worked successfully"
-    
-    return Response(response, status=200, mimetype="application/json")
-
-
 
 # start flask app
 app.run(host="0.0.0.0", port=5000,debug=True)
