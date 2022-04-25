@@ -1,5 +1,5 @@
 FROM python:3.6-slim
-LABEL MAINTAINER="dirk grunwald <grunwald@colorado.edu>"
+LABEL MAINTAINER="arpitaambavane89"
 
 RUN  pip3 install pika
 
