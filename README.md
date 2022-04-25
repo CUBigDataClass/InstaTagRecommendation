@@ -51,7 +51,8 @@ Our Hash Tags generator looks as follows:
 ![app-tag-generator](https://user-images.githubusercontent.com/10383141/165058743-1aedb484-4f2a-43ee-8f67-ab45c40a39c9.png)
 
 Upon uploading the image and clicking on submit, a request shall be sent to the REST server and the hash tags are displayed for that image as follows:
-![app-tag-generator](https://user-images.githubusercontent.com/10383141/165058862-3bd45eb9-6d23-48c5-8cd2-e35f61a50344.png)
+
+![app-tags-display](https://user-images.githubusercontent.com/10383141/165069789-06a32e11-85f5-4fa5-80ed-797fb2a72f36.png)
 
 
 <br><br>
