@@ -4,6 +4,9 @@ import platform
 import io, os, sys
 import pika, redis
 import hashlib
+import sys
+sys.path.append("..")
+
 import json
 import pickle
 #from PIL import Image
