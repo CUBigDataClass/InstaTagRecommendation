@@ -11,7 +11,10 @@ import { TagGeneratorComponent } from './tag-generator/tag-generator.component';
 import { CaptionGeneratorComponent } from './caption-generator/caption-generator.component';
 import { HashtagListComponent } from './hashtag-list/hashtag-list.component';
 import {MatGridListModule } from '@angular/material/grid-list';
-import {HttpClientModule} from '@angular/common/http'
+import {HttpClientModule} from '@angular/common/http';
+import { TagsDisplayComponent } from './tags-display/tags-display.component';
+import { CaptionDisplayComponent } from './caption-display/caption-display.component';
+import { FriendsListComponent } from './friends-list/friends-list.component'
 
 
 @NgModule({
@@ -20,6 +23,9 @@ import {HttpClientModule} from '@angular/common/http'
     TagGeneratorComponent,
     CaptionGeneratorComponent,
     HashtagListComponent,
+    TagsDisplayComponent,
+    CaptionDisplayComponent,
+    FriendsListComponent,
    
   ],
   imports: [
