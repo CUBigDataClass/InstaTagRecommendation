@@ -24,7 +24,7 @@ export class CaptionGeneratorComponent implements OnInit {
     const uploadData =new FormData();
     uploadData.append('file',this.file);
 
-    this.http.post('http://127.0.0.1:5000/api/upload/captionimage',uploadData).subscribe(
+    this.http.post('http://35.202.9.1:5000/api/upload/captionimage',uploadData).subscribe(
       data => console.log(data),
       error => console.log(error)
     );
